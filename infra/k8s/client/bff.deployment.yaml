@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bff-deployment
+spec:
+  selector:
+    matchLabels:
+      app: bff-deployment
+  template:
+    metadata:
+      labels:
+        app: bff-deployment
+    spec:
+      containers:
+      - name: bff
+        imagePullPolicy: Never
+        image: routines/bff
+        env:
+          - name: URL_MS_ENGINES
+            value: http://engines-service:443/api/engines
+          - name: SERVICE_HOSTNAME
+            value: dev.routines.cloud
+          - name: URL_AUTH
+            value: http://keycloak-service.default.svc.cluster.local:8080/auth
+          - name: AUTH_REALM
+            value: 'users'
+          - name: AUTH_WEB_CLIENT_ID
+            value: 'web'
+          - name: AUTH_WEB_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: keycloak-clients
+                key: web-secret
+          - name: AUTH_WEB_REDIRECT_URI
+            value: 'https://routines.com'
+          - name: AUTH_BFF_CLIENT_ID
+            value: bff
+          - name: AUTH_BFF_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: keycloak-clients
+                key: bff-secret
+          - name: HTTP_SERVER_BASE_ROUTE
+            value: /api
+          - name: LOG_LEVEL
+            value: debug
+          - name: SERVICE_PORT
+            value: '443'
+          - name: SERVICE_NAME
+            value: BFF
+          - name: SERVICE_SCHEME
+            value: 'https'
+          - name: PACKAGES_UPLOAD_DIR
+            value: '/app/shared-files/uploads-temp/'
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "428Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 3000
+        volumeMounts:
+          - name: log-persistent-storage
+            mountPath: '/logs'
+            subPath: bff-deployment-logs
+      volumes:
+        - name: log-persistent-storage
+          persistentVolumeClaim:
+            claimName: log-persistent-volume-claim
